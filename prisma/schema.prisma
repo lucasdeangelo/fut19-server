@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  club Club?
+}
+
+model Club {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  name        String
+  coins       Int      @default(10000)
+  fifaPoints  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  players ClubPlayer[]
+  cards   PlayerCard[]
+  squads  Squad[]
+}
+
+// ---------------------------------------------------------------------------
+// CATÁLOGO (dados globais): "quem é Neymar?"
+// Tabela mantida como "Player" via @@map para preservar os dados da V0.1.
+// O modelo passa a se chamar PlayerDefinition para deixar clara a separação
+// conceitual entre definição de jogador (catálogo) e carta (instância).
+// ---------------------------------------------------------------------------
+model PlayerDefinition {
+  id        Int      @id
+  name      String
+  rating    Int
+  position  String
+  nation    String?
+  clubName  String?
+  createdAt DateTime @default(now())
+
+  cards PlayerCard[]
+
+  @@map("Player")
+}
+
+// ---------------------------------------------------------------------------
+// CARTA (instância): "qual carta do Neymar?"
+// Uma PlayerCard referencia uma PlayerDefinition e pertence a um clube.
+// Dados como contracts/status pertencem à instância da carta, não ao catálogo.
+// ---------------------------------------------------------------------------
+model PlayerCard {
+  id                 Int      @id @default(autoincrement())
+  playerDefinitionId Int
+  ownerClubId        Int
+  contracts          Int      @default(7)
+  status             String   @default("active")
+  createdAt          DateTime @default(now())
+
+  playerDefinition PlayerDefinition @relation(fields: [playerDefinitionId], references: [id])
+  ownerClub        Club            @relation(fields: [ownerClubId], references: [id])
+  clubPlayers      ClubPlayer[]
+
+  @@index([ownerClubId])
+  @@index([playerDefinitionId])
+}
+
+// ---------------------------------------------------------------------------
+// INVENTÁRIO / POSSE: associação clube ↔ carta.
+// ClubPlayer representa a posse de uma carta específica pelo clube.
+// ownerClubId em PlayerCard e clubId em ClubPlayer são mantidos em conjunto:
+// PlayerCard é o item (com dono) e ClubPlayer é o registro de inventário/posse.
+// ---------------------------------------------------------------------------
+model ClubPlayer {
+  id           Int      @id @default(autoincrement())
+  clubId       Int
+  playerCardId Int
+  createdAt    DateTime @default(now())
+
+  club       Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  playerCard PlayerCard @relation(fields: [playerCardId], references: [id])
+
+  @@unique([clubId, playerCardId])
+}
+
+model Squad {
+  id        Int      @id @default(autoincrement())
+  clubId    Int
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}

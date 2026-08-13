@@ -1,0 +1,8 @@
+node_modules/
+.openclaude/
+.env
+.prisma/
+npm-debug.log*
+
+# Capturas de tráfego de observação (geradas por CAPTURE_ENABLED / fifa:capture)
+captures/

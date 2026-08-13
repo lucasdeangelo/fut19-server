@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fut19-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fut
+      POSTGRES_PASSWORD: fut
+      POSTGRES_DB: fut19
+    ports:
+      - "5433:5432"
+    volumes:
+      - fut19_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fut -d fut19"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  fut19_postgres_data:
