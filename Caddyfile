@@ -1,0 +1,42 @@
+{
+	# Não tentar ACME/Let's Encrypt nem redirects automáticos:
+	# usamos certificado próprio (mkcert) para domínios que não são nossos.
+	auto_https disable_redirects
+	admin off
+}
+
+# ============================================================
+# HTTPS — domínios que o cliente do FIFA 19 procura no FUT
+# ============================================================
+utas.external.s2.fut.ea.com,
+utas.s2.fut.ea.com,
+utas.fut.ea.com,
+utas.external.fut.ea.com,
+easo.ea.com {
+
+	tls /etc/caddy/certs/fut19-ea.pem /etc/caddy/certs/fut19-ea-key.pem
+
+	# Loga TUDO que o jogo pedir — é assim que você mapeia os
+	# endpoints reais que o cliente chama (paths, métodos, headers).
+	log {
+		output file /data/access.log
+		format json
+	}
+
+	reverse_proxy {$APP_UPSTREAM}
+	# O Caddy preserva o header Host original (utas...ea.com),
+	# então seu app consegue saber qual domínio o jogo chamou.
+}
+
+# ============================================================
+# HTTP (porta 80) — catch-all para descoberta
+# Alguns clientes EA fazem chamadas HTTP simples antes do TLS.
+# ============================================================
+http:// {
+	log {
+		output file /data/access.log
+		format json
+	}
+
+	reverse_proxy {$APP_UPSTREAM}
+}

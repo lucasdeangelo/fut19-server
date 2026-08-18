@@ -1,0 +1,50 @@
+name: fut19-edge
+
+# Stack de borda do revival de FUT 19:
+#   dnsmasq  -> resolve os domínios da EA para o IP deste servidor
+#   caddy    -> termina TLS na 443 com cert da sua CA e faz proxy pro app Node
+#
+# Uso:
+#   docker compose -f docker-compose.fut19-edge.yml up -d
+#
+# Para MERGIR no seu docker-compose.yml principal: copie os dois services,
+# ajuste APP_UPSTREAM para o nome do seu serviço (ex.: "app:3000")
+# e remova o extra_hosts do caddy.
+
+services:
+  dns:
+    image: strm/dnsmasq:latest
+    container_name: fut19-dns
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./dns/dnsmasq.conf:/etc/dnsmasq.conf:ro
+      - ./dns/logs:/var/log
+
+  edge:
+    image: caddy:2-alpine
+    container_name: fut19-edge
+    restart: unless-stopped
+    extra_hosts:
+      # Necessário no Linux para alcançar o app rodando fora do Docker
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Onde seu servidor Node está ouvindo:
+      #   App fora do Docker, mesma máquina:  host.docker.internal:3000
+      #   App no mesmo compose (serviço app): app:3000
+      #   App em outra máquina da LAN:       192.168.x.x:3000
+      APP_UPSTREAM: ${APP_UPSTREAM:-host.docker.internal:3000}
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/certs:/etc/caddy/certs:ro
+      - caddy_data:/data
+
+volumes:
+  caddy_data:
